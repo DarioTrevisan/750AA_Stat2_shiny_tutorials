@@ -1,1 +1,8 @@
 .claude/
+.positai
+
+# RStudio / R session state (local-machine only, not project content)
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
