@@ -1,0 +1,12 @@
+name: Medoids
+title: Medoids
+username: dario-trevisan
+account: dario-trevisan
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15219907
+bundleId: 10942347
+url: https://dario-trevisan.shinyapps.io/Medoids/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

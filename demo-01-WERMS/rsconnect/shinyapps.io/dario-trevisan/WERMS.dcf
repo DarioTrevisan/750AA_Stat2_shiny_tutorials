@@ -1,0 +1,13 @@
+name: WERMS
+title: WERMS
+username: dario-trevisan
+account: dario-trevisan
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15219904
+bundleId: 10842344
+url: https://dario-trevisan.shinyapps.io/WERMS/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: demo-01-WERMS.R|www/werms-logo-2.jpg

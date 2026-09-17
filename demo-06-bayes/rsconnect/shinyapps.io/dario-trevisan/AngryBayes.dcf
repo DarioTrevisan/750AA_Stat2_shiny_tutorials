@@ -1,0 +1,13 @@
+name: AngryBayes
+title: AngryBayes
+username: dario-trevisan
+account: dario-trevisan
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15258294
+bundleId: 11050492
+url: https://dario-trevisan.shinyapps.io/AngryBayes/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: values.csv

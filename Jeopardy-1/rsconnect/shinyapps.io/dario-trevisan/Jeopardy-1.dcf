@@ -1,0 +1,12 @@
+name: Jeopardy-1
+title: Jeopardy-1
+username: dario-trevisan
+account: dario-trevisan
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15795947
+bundleId: 11052251
+url: https://dario-trevisan.shinyapps.io/Jeopardy-1/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

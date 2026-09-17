@@ -1,0 +1,12 @@
+name: FinalClustering
+title: FinalClustering
+username: dario-trevisan
+account: dario-trevisan
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15258302
+bundleId: 10959892
+url: https://dario-trevisan.shinyapps.io/FinalClustering/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

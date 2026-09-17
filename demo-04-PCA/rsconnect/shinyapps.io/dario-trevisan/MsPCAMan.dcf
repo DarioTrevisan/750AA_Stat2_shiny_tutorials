@@ -1,0 +1,12 @@
+name: MsPCAMan
+title: MsPCAMan
+username: dario-trevisan
+account: dario-trevisan
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15258312
+bundleId: 10989650
+url: https://dario-trevisan.shinyapps.io/MsPCAMan/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

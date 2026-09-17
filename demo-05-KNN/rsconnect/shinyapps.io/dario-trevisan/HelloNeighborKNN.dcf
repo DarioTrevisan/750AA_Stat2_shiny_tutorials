@@ -1,0 +1,12 @@
+name: HelloNeighborKNN
+title: HelloNeighborKNN
+username: dario-trevisan
+account: dario-trevisan
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15309953
+bundleId: 11025449
+url: https://dario-trevisan.shinyapps.io/HelloNeighborKNN/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
