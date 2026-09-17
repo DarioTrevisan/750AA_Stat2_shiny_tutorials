@@ -28,7 +28,6 @@ ui <- fluidPage(
              )
            )
     )
-    
   )
 )
 
@@ -46,21 +45,18 @@ server <- function(input, output) {
       coord_cartesian(xlim = ranges2$x, ylim = ranges2$y)
   })
   
-  # When a double-click happens, check if there's a brush on the plot.
+  # Check if there's a brush on the plot.
   # If so, zoom to the brush bounds; if not, reset the zoom.
   observe({
     brush <- input$plot2_brush
-    print(input$plot2_hover)
     if (!is.null(brush)) {
       ranges2$x <- c(brush$xmin, brush$xmax)
       ranges2$y <- c(brush$ymin, brush$ymax)
-      
     } else {
       ranges2$x <- NULL
       ranges2$y <- NULL
     }
   })
-  
 }
 
 shinyApp(ui, server)

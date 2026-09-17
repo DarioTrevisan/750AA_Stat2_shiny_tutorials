@@ -48,8 +48,8 @@ cluster_algos <- c(
   "Partition Around Medoids (Euclidean)" = "pam",
   "Partition Around Medoids (Manhattan)" = "pam_manhattan",
   "Single linkage HC (agnes)" = "single",
-  "Average linkage  HC (agnes)" = "average",
-  "Complete linkage  HC (agnes)" = "complete",
+  "Average linkage HC (agnes)" = "average",
+  "Complete linkage HC (agnes)" = "complete",
   "DIvisive ANAlysis Clustering (diana)" = "diana"
 )
 
@@ -90,9 +90,9 @@ quest_list <- c(
   "Dendrogram Divergence" = "Find a dataset where single linkage and complete linkage hierarchical clustering yield different clusters, even after relabeling.",
   "K-means Exploration" = "Generate a dataset where k=3 clusters computed with K-means clustering have a silhouette width averaging at least 0.7.",
   "Manhattan vs. Euclidean" = "Construct a dataset where the PAM algorithm using Manhattan distance results in different clusters compared to Euclidean distance.",
-  "Dunn Index Showdown"= "Design a dataset where the Dunn Index is maximized (greater than 0.7) for k=4 clusters, demonstrating well-separated clusters.",
+  "Dunn Index Showdown" = "Design a dataset where the Dunn Index is maximized (greater than 0.7) for k=4 clusters, demonstrating well-separated clusters.",
   "Inertia Inflation" = "Generate a dataset where the Within-Cluster Sum-of-Squares (inertia) for k=4 clusters is notably high (greater than 4), suggesting poor cluster compactness.",
-  "Cluster Overlap Chaos" = " Create a dataset with overlapping clusters that results in a Dunn Index below 0.1, indicating poor separation.",
+  "Cluster Overlap Chaos" = "Create a dataset with overlapping clusters that results in a Dunn Index below 0.1, indicating poor separation.",
   "Outlier Detection" = "Design a dataset where outliers significantly affect the K-means clustering results, causing changes in cluster centroids.",
   "Cluster Size Variability" = "Create a dataset with k=2 evident clusters of complex structure such that K-means fails to capture them.",
   "Cluster Relabeling" = "Find a scenario where hierarchical clustering (single linkage) and K-means clustering yield the same clusters but require relabeling for consistency.",
@@ -114,46 +114,46 @@ quest_list <- c(
 
 # Indicators
 
-# withinclass sum of squares
-wcss <- function( data_points_and_clusters){
-  # transform clusters vector into factor 
-  data_points <- data_points_and_clusters[,1:2]
-  clusters <- factor(data_points_and_clusters[,3])
+# within-cluster sum of squares
+wcss <- function(data_points_and_clusters) {
+  # transform clusters vector into factor
+  data_points <- data_points_and_clusters[, 1:2]
+  clusters <- factor(data_points_and_clusters[, 3])
   wcss_computed <- 0
-  for( column in colnames(data_points)){
-    for(i in levels(clusters)){
-      mean_cluster <- mean(data_points[clusters==i, column])
+  for (column in colnames(data_points)) {
+    for (i in levels(clusters)) {
+      mean_cluster <- mean(data_points[clusters == i, column])
       # compute the sse for the cluster
-      sse <- sum( (data_points[clusters==i, column] - mean_cluster)^2 )
+      sse <- sum((data_points[clusters == i, column] - mean_cluster)^2)
       # add the sse to wcss
-      wcss_computed <- wcss_computed +sse
+      wcss_computed <- wcss_computed + sse
     }
   }
   return(wcss_computed)
 }
-  
 
 # Dunn Index
-
-dunn_index <- function( data_points_and_cluster){
+#
+# NOTE: `dist()` returns a flat lower-triangle vector, not a matrix, so it
+# cannot be subset with `D[clusters == i][clusters == j]` (that indexes into
+# the flat vector using a per-point logical mask, which is meaningless).
+# We convert to a full distance matrix first so rows/columns can be indexed
+# by cluster membership.
+dunn_index <- function(data_points_and_cluster) {
   # the third column contains the cluster labels
-  data_points <- data_points_and_cluster[,1:2]
-  clusters <- factor(data_points_and_cluster[,3])
-  D <- dist(data_points, diag=TRUE, upper=TRUE)
+  data_points <- data_points_and_cluster[, 1:2]
+  clusters <- factor(data_points_and_cluster[, 3])
+  D <- as.matrix(dist(data_points))
   diam <- 0
   delta <- max(D)
-  for( i in levels(clusters)){
-    for(j in levels(clusters)){
-      if(i != j){
-        delta <- min(delta, min( D[clusters==i][clusters==j], na.rm=TRUE))
-      } else{
-        diam <- max(diam, max(D[clusters==i][clusters==j], na.rm=TRUE))
-      }
-      
+  for (i in levels(clusters)) {
+    for (j in levels(clusters)) {
+      if (i != j) {
+        delta <- min(delta, min(D[clusters == i, clusters == j]))
+      } else {
+        diam <- max(diam, max(D[clusters == i, clusters == i]))
       }
     }
-  return( delta/diam )
+  }
+  return(delta / diam)
 }
-
-
-  

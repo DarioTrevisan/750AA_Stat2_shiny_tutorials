@@ -91,32 +91,93 @@ answers <- list(
 # --- UI ---
 ui <- fluidPage(
   titlePanel(paste("🎯", titolo)),
-  
+
   uiOutput("mainUI")
 )
 
 # --- SERVER ---
 server <- function(input, output, session) {
-  
+
+  n_questions <- 5
+
+  # qid identifies a single question, e.g. "Bayes_3"
+  make_qid <- function(category, index) paste0(category, "_", index)
+  points_for <- function(index) index * 100
+
   current_question <- reactiveVal(NULL)
   show_answer <- reactiveVal(FALSE)
   game_over <- reactiveVal(FALSE)
-  
+
   scores <- reactiveValues(red = 0, blue = 0)
   answered <- reactiveValues()
-  
-  # Initialize all questions as unanswered
-  for (cat in categories) {
-    for (i in 1:5) {
-      answered[[paste0(cat, "_", i)]] <- FALSE
-    }
-  }
-  
+
   # Check if game is over (all questions answered)
   checkGameOver <- function() {
-    all(sapply(names(answered), function(x) answered[[x]]))
+    all(vapply(names(answered), function(qid) answered[[qid]], logical(1)))
   }
-  
+
+  # --- Per-question setup ---
+  # For every question we: mark it unanswered, render its board tile as its
+  # own output, and wire up its click/reveal/scoring observers. Each question
+  # gets its own uiOutput/observers (rather than sharing IDs across questions
+  # or regenerating the whole board on every answer) so that recreating one
+  # button never resets another button's click counter — with shared IDs,
+  # Shiny ignores a click that resends the same value it last sent, which
+  # made buttons silently stop responding after the board redrew.
+  # local() gives each iteration its own copies of qid/points/etc., since a
+  # for-loop variable in R is shared across iterations and would otherwise be
+  # captured by reference (every observer would see the value from the last
+  # iteration) once these reactive blocks actually run.
+  for (category in categories) {
+    for (i in seq_len(n_questions)) {
+      local({
+        qid <- make_qid(category, i)
+        points <- points_for(i)
+        this_category <- category
+        this_index <- i
+
+        answered[[qid]] <- FALSE
+
+        # Board tile: point value, or "—" once answered
+        output[[paste0("tile_", qid)]] <- renderUI({
+          actionButton(
+            inputId = qid,
+            label = if (answered[[qid]]) "—" else as.character(points),
+            width = "100%",
+            style = paste0(
+              "margin-bottom:10px; height:60px; font-size:20px;",
+              if (answered[[qid]]) "background-color:lightgray;"
+            )
+          )
+        })
+
+        # Clicking a tile opens its question
+        observeEvent(input[[qid]], {
+          if (!answered[[qid]] && !game_over()) {
+            current_question(list(category = this_category, index = this_index))
+            show_answer(FALSE)
+          }
+        })
+
+        # Reveal button for this question
+        observeEvent(input[[paste0("reveal_", qid)]], {
+          show_answer(TRUE)
+        })
+
+        # Award points to a team for this question (once only)
+        award_points <- function(team) {
+          if (!answered[[qid]]) {
+            scores[[team]] <- scores[[team]] + points
+            answered[[qid]] <- TRUE
+            if (checkGameOver()) game_over(TRUE)
+          }
+        }
+        observeEvent(input[[paste0("red_", qid)]], award_points("red"))
+        observeEvent(input[[paste0("blue_", qid)]], award_points("blue"))
+      })
+    }
+  }
+
   # --- MAIN UI rendering ---
   output$mainUI <- renderUI({
     if (game_over()) {
@@ -128,7 +189,7 @@ server <- function(input, output, session) {
       } else {
         "🤝 Pareggio!"
       }
-      
+
       tagList(
         br(), br(),
         h1("🏆 Game Over!", align = "center"),
@@ -144,84 +205,54 @@ server <- function(input, output, session) {
       )
     } else {
       # Game board screen
-      
       tagList(
-        fluidRow( 
+        fluidRow(
           uiOutput("qaDisplay"),
           column(6, h3(paste("🔴", red_name), align = "center", style = "color:red;"),
                  textOutput("scoreRed", container = h2, inline = TRUE)),
           column(6, h3(paste("🔵", blue_name), align = "center", style = "color:blue;"),
                  textOutput("scoreBlue", container = h2, inline = TRUE))
         ),
-        
+
         hr(),
         fluidRow(
-          lapply(categories, function(cat) {
+          lapply(categories, function(category) {
             column(2,
-                   tags$h4(cat, align = "center"),
-                   lapply(1:5, function(i) {
-                     qid <- paste0(cat, "_", i)
-                     actionButton(
-                       inputId = qid,
-                       label = if (answered[[qid]]) "—" else paste0(i * 100),
-                       width = "100%",
-                       style = paste0(
-                         "margin-bottom:10px; height:60px; font-size:20px;",
-                         if (answered[[qid]]) "background-color:lightgray;"
-                       )
-                     )
+                   tags$h4(category, align = "center"),
+                   lapply(seq_len(n_questions), function(i) {
+                     uiOutput(paste0("tile_", make_qid(category, i)))
                    })
             )
           })
         )
-       
       )
     }
   })
-  
-  # --- Observe question clicks ---
-  observe({
-    for (cat in categories) {
-      for (i in 1:5) {
-        local({
-          ccat <- cat
-          ii <- i
-          observeEvent(input[[paste0(ccat, "_", ii)]], {
-            qid <- paste0(ccat, "_", ii)
-            if (!answered[[qid]] && !game_over()) {
-              current_question(list(category = ccat, index = ii))
-              show_answer(FALSE)
-            }
-          })
-        })
-      }
-    }
-  })
-  
+
   # --- Display question and answer ---
   output$qaDisplay <- renderUI({
     req(current_question())
     qinfo <- current_question()
-    cat <- qinfo$category
-    idx <- paste0("q", qinfo$index)
-    points <- qinfo$index * 100
-    qid <- paste0(cat, "_", qinfo$index)
-    
-    question_text <- questions[[cat]][[idx]]
-    answer_text <- answers[[cat]][[idx]]
-    
+    category <- qinfo$category
+    index <- qinfo$index
+    qid <- make_qid(category, index)
+    points <- points_for(index)
+
+    question_text <- questions[[category]][[paste0("q", index)]]
+    answer_text <- answers[[category]][[paste0("q", index)]]
+
     tagList(
-      h3(paste(cat, "-", points, "punti")),
+      h3(paste(category, "-", points, "punti")),
       h4(question_text, style = "color:navy;"),
       if (!show_answer()) {
-        actionButton("reveal", "Mostra la risposta", class = "btn-primary")
+        actionButton(paste0("reveal_", qid), "Mostra la risposta", class = "btn-primary")
       } else if (!answered[[qid]]) {
         tagList(
           h4(paste("Risposta:", answer_text), style = "color:darkgreen;"),
           br(),
           fluidRow(
-            column(6, actionButton("redPoints", paste("Assegna a 🔴", red_name), class = "btn-danger btn-lg", width = "100%")),
-            column(6, actionButton("bluePoints", paste("Assegna a 🔵", blue_name), class = "btn-info btn-lg", width = "100%"))
+            column(6, actionButton(paste0("red_", qid), paste("Assegna a 🔴", red_name), class = "btn-danger btn-lg", width = "100%")),
+            column(6, actionButton(paste0("blue_", qid), paste("Assegna a 🔵", blue_name), class = "btn-info btn-lg", width = "100%"))
           )
         )
       } else {
@@ -229,48 +260,18 @@ server <- function(input, output, session) {
       }
     )
   })
-  
-  # --- Reveal answer ---
-  observeEvent(input$reveal, {
-    show_answer(TRUE)
-  })
-  
-  # --- Award points ---
-  observeEvent(input$redPoints, {
-    qinfo <- current_question()
-    req(qinfo)
-    qid <- paste0(qinfo$category, "_", qinfo$index)
-    if (!answered[[qid]]) {
-      scores$red <- scores$red + qinfo$index * 100
-      answered[[qid]] <- TRUE
-      show_answer(TRUE)
-      if (checkGameOver()) game_over(TRUE)
-    }
-  })
-  
-  observeEvent(input$bluePoints, {
-    qinfo <- current_question()
-    req(qinfo)
-    qid <- paste0(qinfo$category, "_", qinfo$index)
-    if (!answered[[qid]]) {
-      scores$blue <- scores$blue + qinfo$index * 100
-      answered[[qid]] <- TRUE
-      show_answer(TRUE)
-      if (checkGameOver()) game_over(TRUE)
-    }
-  })
-  
+
   # --- Display scores ---
   output$scoreRed <- renderText({ scores$red })
   output$scoreBlue <- renderText({ scores$blue })
-  
+
   # --- Restart game ---
   observeEvent(input$restart, {
     scores$red <- 0
     scores$blue <- 0
-    for (cat in categories) {
-      for (i in 1:5) {
-        answered[[paste0(cat, "_", i)]] <- FALSE
+    for (category in categories) {
+      for (i in seq_len(n_questions)) {
+        answered[[make_qid(category, i)]] <- FALSE
       }
     }
     current_question(NULL)
@@ -281,4 +282,3 @@ server <- function(input, output, session) {
 
 # --- Run App ---
 shinyApp(ui, server)
-

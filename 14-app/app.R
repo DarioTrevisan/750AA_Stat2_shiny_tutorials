@@ -6,12 +6,9 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-  
-random_number <- eventReactive(input$button, runif(1))
+  random_number <- eventReactive(input$button, runif(1))
 
-output$number <- renderText(paste0("Il numero casuale è :", random_number() ))
-
-  
+  output$number <- renderText(paste0("Il numero casuale è :", random_number()))
 }
 
 shinyApp(ui, server)

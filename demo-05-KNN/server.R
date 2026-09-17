@@ -1,11 +1,7 @@
-
-
-
 server <- function(input, output, session) {
   source("server_demo.R", local = TRUE)
   source("server_game.R", local = TRUE)
-  
-  
+
   tmp <- tempfile()
   output$documentation <- renderUI({
     rdfile <- paste0(game$name_dataset, ".Rd")
@@ -16,5 +12,5 @@ server <- function(input, output, session) {
             package = "MedDataSets")
     includeHTML(tmp)
   })
-  
+
 }

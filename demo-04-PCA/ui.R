@@ -1,20 +1,18 @@
-
-
-
-
-
 ui <- fluidPage(
-  #titlePanel("Ms PCA-MAN!"),
   tabsetPanel(
     id = "tabs",
-    tabPanel("Description", sidebarPanel(
-      img(
-        src = "pca_man-logo.jpg",
-        alt = pca_man_logo_description,
-        width = 400,
-        height = 400
-      )
-    ), mainPanel(markdown(mds = pca_man_description))),
+    tabPanel(
+      "Description",
+      sidebarPanel(
+        img(
+          src = "pca_man-logo.jpg",
+          alt = pca_man_logo_description,
+          width = 400,
+          height = 400
+        )
+      ),
+      mainPanel(markdown(mds = pca_man_description))
+    ),
     tabPanel(
       "Demo",
       sidebarPanel(
@@ -34,22 +32,17 @@ ui <- fluidPage(
       ),
       mainPanel(
         textOutput("demo_info"),
-        plotOutput("demo_plot", click  = "demo_plot_click", dblclick = "demo_plot_dblclick")
-      ),
+        plotOutput("demo_plot", click = "demo_plot_click", dblclick = "demo_plot_dblclick")
+      )
     ),
     tabPanel(
       "Play Ms PCA-Man!",
-      verbatimTextOutput("debug"),
       textOutput("level_info"),
-      #   textOutput("game_info"),
-      #   mainPanel(
-      plotOutput("game_plot", click  = "game_plot_click", dblclick = "game_plot_dblclick"),
+      plotOutput("game_plot", click = "game_plot_click", dblclick = "game_plot_dblclick"),
       actionButton("game_confirm_button", "Confirm your choice!", class = "btn-block"),
       actionButton("game_sample_points", "Sample a new dataset", class = "btn-block"),
-      
       textOutput("game_hint"),
-      textOutput("game_stats"),
-      
+      textOutput("game_stats")
     ),
     tabPanel("Dataset description", mainPanel(uiOutput("documentation")))
   )

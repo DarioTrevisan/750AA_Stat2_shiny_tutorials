@@ -1,11 +1,13 @@
-#game
+# game
 
-
-# if the game is set to
-# -1 the player must click on the plot to get a new dataset. Click moves to status 0
-# 0 the player must click to get a new test point. Click moves to status 1
-# 1 the player must click to confirm his classification. Click moves to status 2
-# 2 the player gets feedback about actual classification and scores. By clicking again it gets either a new dataset (new level, status -1) or a new test point (new round, status 0)
+# game_status meaning:
+#  -2  game over: click on the plot restarts the game (resets lives/level, goes to -1)
+#  -1  a new dataset is sampled automatically for the level, then status moves to 0
+#   0  waiting for a click to reveal a new test point to classify (click -> status 1)
+#   1  a test point is shown; choose a class with the radio buttons, then click
+#      the plot to confirm your answer (click -> status 2)
+#   2  feedback on the confirmed answer is shown; clicking again advances to a
+#      new test point (status 0) or, if the level is complete, a new dataset/level (status -1)
 
 game_status <- reactiveVal(-1)
 game_level <- reactiveVal(1)
@@ -14,13 +16,12 @@ game_points <- reactiveVal(0)
 
 game_points_global <- reactiveVal(3)
 
+# the class the player picked, snapshotted at the moment they confirm (click
+# while game_status == 1), so later edits to the radio button can't change
+# an already-confirmed answer's outcome
+game_answer <- reactiveVal(NULL)
 
-#reactive vals for points
-
-#set number of test points for game
-
-game_k <- reactiveVal(1)
-
+# number of test points sampled for the game
 max_rounds <- 20
 
 game <- reactiveValues()
@@ -31,21 +32,40 @@ game$name_columns_dataset <- character()
 game$factor_levels <- character()
 game$name_dataset <- character()
 
-
 knn_class <- reactiveVal(character())
-game$test_error <- data.frame(k = numeric(), error = numeric())
-game$train_error <- data.frame(k = numeric(), error = numeric())
 
-# sample points when game_status is -1
+# helpers: the number of available training points, and safe k values that
+# never exceed what knn()/knn.cv() can handle for the current training set
+# (prevents crashes on datasets too small for the current level/round)
 
+game_train_n <- reactive(nrow(game$training_points))
+
+game_effective_k <- reactive({
+  n <- game_train_n()
+  if (n < 2) 1 else min(game_round(), n - 1)
+})
+
+game_k_max <- reactive({
+  n <- game_train_n()
+  if (n < 2) 1 else min(game_level(), n - 1)
+})
+
+# sample a new dataset when game_status is -1
 
 observe({
   if (game_status() == -1) {
     output$game_over <- renderText("")
     game_status(0)
     game_round(1)
-    output$game_points <- renderText("")
-    z <- sample_data_frame_numeric_class()
+    game_answer(NULL)
+
+    # keep sampling until the dataset has enough rows for max_rounds test
+    # points plus a reasonable training set (avoids NA-padded train/test
+    # data and knn() errors on datasets that are too small)
+    repeat {
+      z <- sample_data_frame_numeric_class()
+      if (nrow(z$data) >= max_rounds + 5) break
+    }
     z_row <- nrow(z$data)
     z_max <- min(50, z_row)
     sample_total <- sample(z_row, z_max)
@@ -67,9 +87,7 @@ observe({
     output$game_hint <- renderText("Click on the plot to get a new test point to classify!")
     output$game_points_info <- renderText("")
     output$game_test_points_table <- renderTable(game$test_points[c(), ])
-    
-  }
-  else if (game_status() == 1) {
+  } else if (game_status() == 1) {
     output$game_test_points_table <- renderTable(game$test_points[game_round(), 1:2])
     output$game_hint <- renderText("Use the radio buttons to choose a class. Click again the plot to confirm!")
     knn_class(as.character(
@@ -77,70 +95,65 @@ observe({
         game$training_points[, 1:2],
         game$test_points[game_round(), 1:2],
         cl = game$training_points[, 3],
-        game_round()
+        k = game_effective_k()
       )
     ))
-  }
-  else {
+  } else if (game_status() == 2) {
     output$game_test_points_table <- renderTable(game$test_points[game_round(), ])
     output$game_hint <- renderText("Click again to move to the next stage/level!")
-    
-    if (input$game_radio_class == game$test_points[game_round(), 3] &&
-        input$game_radio_class == knn_class()) {
+
+    req(game_answer())
+    player_answer <- game_answer()
+    actual_class <- as.character(game$test_points[game_round(), 3])
+
+    if (player_answer == actual_class && player_answer == knn_class()) {
       output$game_points_info <- renderText(
         paste0(
           "You classified the point as ",
-          input$game_radio_class,
+          player_answer,
           " applying correctly ",
-          game_round(),
+          game_effective_k(),
           "-NN. This is also the actual point class! One additional life awarded!"
         )
       )
       game_points(1)
-    }
-    else if (input$game_radio_class == knn_class() &&
-             knn_class() != game$test_points[game_round(), 3]) {
+    } else if (player_answer == knn_class() && knn_class() != actual_class) {
       output$game_points_info <- renderText(
         paste0(
           "You classified the point as ",
-          input$game_radio_class,
+          player_answer,
           " applying correctly ",
-          game_round(),
+          game_effective_k(),
           "-NN. However, the actual point class is ",
-          game$test_points[game_round(), 3],
+          actual_class,
           ". No lives awarded!"
         )
       )
       game_points(0)
-    }
-    else if (input$game_radio_class != knn_class() &&
-             input$game_radio_class == game$test_points[game_round(), 3]) {
+    } else if (player_answer != knn_class() && player_answer == actual_class) {
       output$game_points_info <- renderText(
         paste0(
           "You classified the point as ",
-          input$game_radio_class,
+          player_answer,
           " but ",
-          game_round(),
+          game_effective_k(),
           "-NN yields the class ",
           knn_class(),
-          ".
-                                                But you still guessed the actual class of the point! No lives lost!"
+          ". But you still guessed the actual class of the point! No lives lost!"
         )
       )
       game_points(0)
-    }
-    else{
+    } else {
       output$game_points_info <- renderText(
         paste0(
           "You classified the point as ",
-          input$game_radio_class,
+          player_answer,
           " but ",
-          game_round(),
+          game_effective_k(),
           "-NN yields the class ",
           knn_class(),
-          ".
-                                                Your guess is not even the actual class of the point, which is ",
-          game$test_points[game_round(), 3],
+          ". Your guess is not even the actual class of the point, which is ",
+          actual_class,
           ". You lost a life!"
         )
       )
@@ -149,36 +162,30 @@ observe({
   }
 })
 
-
-
 observeEvent(input$game_plot_click, {
   if (game_status() == -2) {
     game_status(-1)
     game_level(1)
-    game_round(0)
-    game_points_global(2)
-  }
-  else if (game_status() == 0) {
+    game_points_global(3)
+  } else if (game_status() == 0) {
     game_status(1)
-  }
-  else  if (game_status() == 1) {
+  } else if (game_status() == 1) {
+    # lock in the player's answer at confirm time, so later radio button
+    # changes can no longer affect the outcome of this round
+    game_answer(input$game_radio_class)
     game_status(2)
-  }
-  else {
+  } else {
     game_points_global(game_points_global() + game_points())
+    game_answer(NULL)
     if (game_round() < min(game_level(), max_rounds)) {
       game_status(0)
       game_round(game_round() + 1)
-    }
-    else{
+    } else {
       game_level(game_level() + 1)
       game_status(-1)
     }
   }
-  
 })
-
-
 
 # plot reactive
 
@@ -200,8 +207,7 @@ game_plot_reactive <- reactive({
       color = "black",
       shape = 8
     )
-  }
-  else if (game_status() == 2) {
+  } else if (game_status() == 2) {
     plt <- plt + geom_point(
       aes(
         x = game$test_points[game_round(), 1],
@@ -212,22 +218,18 @@ game_plot_reactive <- reactive({
       size = 5
     )
   }
-  plt <- plt +  labs(
+  plt <- plt + labs(
     x = game$name_columns_dataset[1],
     y = game$name_columns_dataset[2],
     colour = game$name_columns_dataset[3],
     shape = game$name_columns_dataset[3]
-  ) #+
-    #theme(aspect.ratio = 1, legend.position = "top")
+  )
   plt
 })
-
 
 # output
 
 output$game_plot <- renderPlot(game_plot_reactive())
-
-# d
 
 output$game_radio_choose_class <- renderUI({
   if (length(game$factor_levels) > 0)
@@ -245,20 +247,18 @@ output$game_info <- renderText(
     ", stage ",
     game_round(),
     ": classify with ",
-    game_round(),
+    game_effective_k(),
     "-NN. Player lives: ",
     game_points_global(),
     "."
   )
 )
 
-
 ## extra: error plots to show at the end (or beginning of level)
-
 
 game_training_error <- reactive({
   training_error <- numeric()
-  k_max <- max(1, game_level())#%(nrow(game$training_points)-1))
+  k_max <- game_k_max()
   if (nrow(game$training_points) > 1) {
     for (k in 1:k_max) {
       error <- mean(game$training_points[, 3] != as.character(
@@ -266,47 +266,53 @@ game_training_error <- reactive({
           game$training_points[, 1:2],
           game$training_points[, 1:2],
           cl = game$training_points[, 3],
-          k
+          k = k
         )
       ))
       training_error <- c(training_error, error)
     }
     data.frame(k = 1:k_max, error = training_error)
-  }
-  else {
+  } else {
     data.frame(k = numeric(), error = numeric())
   }
 })
 
 game_cv_error <- reactive({
   cv_error <- numeric()
-  k_max <- max(1, game_level())# nrow(game$training_points)-1)
-  for (k in 1:k_max) {
-    error <- mean(game$training_points[, 3] != as.character(
-      knn.cv(game$training_points[, 1:2], cl = game$training_points[, 3], k)
-    ))
-    cv_error <- c(cv_error, error)
+  k_max <- game_k_max()
+  if (nrow(game$training_points) > 1) {
+    for (k in 1:k_max) {
+      error <- mean(game$training_points[, 3] != as.character(
+        knn.cv(game$training_points[, 1:2], cl = game$training_points[, 3], k = k)
+      ))
+      cv_error <- c(cv_error, error)
+    }
+    data.frame(k = 1:k_max, error = cv_error)
+  } else {
+    data.frame(k = numeric(), error = numeric())
   }
-  data.frame(k = 1:k_max, error = cv_error)
 })
 
 game_test_error <- reactive({
   test_error <- numeric()
-  k_max <- max(1, game_level())# nrow(game$training_points)-1)
-  for (k in 1:k_max) {
-    error <- mean(game$test_points[, 3] != as.character(
-      knn(
-        game$training_points[, 1:2],
-        game$test_points[, 1:2],
-        cl = game$training_points[, 3],
-        k
-      )
-    ))
-    test_error <- c(test_error, error)
+  k_max <- game_k_max()
+  if (nrow(game$training_points) > 1) {
+    for (k in 1:k_max) {
+      error <- mean(game$test_points[, 3] != as.character(
+        knn(
+          game$training_points[, 1:2],
+          game$test_points[, 1:2],
+          cl = game$training_points[, 3],
+          k = k
+        )
+      ))
+      test_error <- c(test_error, error)
+    }
+    data.frame(k = 1:k_max, error = test_error)
+  } else {
+    data.frame(k = numeric(), error = numeric())
   }
-  data.frame(k = 1:k_max, error = test_error)
 })
-
 
 # error plot
 
@@ -347,8 +353,6 @@ output$game_error <- renderPlot(
     theme(legend.position = "top")
 )
 
-
 # debug
 
-#output$game_debug <- renderText(paste0("game status: ", game_status())) # " \n computed class", knn_class(), " \n actual class: ", game$test_points[game_round(), 3]) )
-output$game_debug_table <-  renderTable(game$training_error)
+output$game_debug_table <- renderTable(game_training_error())

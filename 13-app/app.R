@@ -9,18 +9,18 @@ ui <- fluidPage(sidebarLayout(
   mainPanel(uiOutput("documentation"))
 ))
 
-server <- function(input, output, session){
+server <- function(input, output, session) {
   tmp <- tempfile()
-  onSessionEnded(function(){ unlink(tmp) })
-  
+  onSessionEnded(function() { unlink(tmp) })
+
   RdDatabase <- reactive({
     Rd_db(input$package)
   })
-  
+
   output$choose_topic <- renderUI({
-    selectInput("topic", "select topic", sub(".Rd", "", names(RdDatabase())))
+    selectInput("topic", "select topic", sub("\\.Rd$", "", names(RdDatabase())))
   })
-  
+
   output$documentation <- renderUI({
     rdfile <- paste0(input$topic, ".Rd")
     req(rdfile %in% names(RdDatabase()))

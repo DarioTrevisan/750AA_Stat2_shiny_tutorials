@@ -15,22 +15,21 @@ datasets <- c("economics", "faithfuld", "seals")
 ui <- fluidPage(
   selectInput("dataset", "Dataset", choices = datasets),
   verbatimTextOutput("summary"),
-  tableOutput("plot")
+  plotOutput("plot")
 )
 
 server <- function(input, output, session) {
   x <- reactive({
     get(input$dataset, "package:ggplot2")
   })
-  
+
   output$summary <- renderPrint({
-    "prova"
+    summary(x())
   })
-  
+
   output$plot <- renderPlot({
     plot(x())
   }, res = 96)
-  
 }
 
 # Run the application 

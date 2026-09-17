@@ -2,7 +2,7 @@ library(shiny)
 library(ggplot2)
 
 ui <- fluidPage(
-  plotOutput("plot", hover = "plot_click"),
+  plotOutput("plot", click = "plot_click"),
   verbatimTextOutput("info")
 )
 

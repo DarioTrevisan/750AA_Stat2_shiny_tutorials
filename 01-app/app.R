@@ -16,15 +16,11 @@ ui <- fluidPage(
   textOutput("greeting")
 )
 
-
-
 # Define server logic required to draw a histogram
-server <- function(input, output) {
-
-   output$greeting <- renderText({
-     print(c('Ciao, ', input$name, '!!'))
-   }
-   )
+server <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Ciao, ", input$name, "!!")
+  })
 }
 
 # Run the application 

@@ -29,10 +29,7 @@ ui <- fluidPage(
           value = 1,
           step = 1
         ),
-        #markdown(mds = "Click on the plot to add (training) points of a chosen class."),
         hr(),
-       # markdown(mds = "### Add test points
-       #        Double click on the plot to add (test) points to be classified."),
         tableOutput("demo_test_points"),
         hr(),
         uiOutput("demo_slider_choose_k"),
@@ -42,9 +39,7 @@ ui <- fluidPage(
         width = 6,
         plotOutput("demo_plot", click  = "demo_plot_click", dblclick = "demo_plot_dblclick"),
         actionButton("demo_erase_plot", "Erase data set", class = "btn-block"),
-        actionButton("demo_remove_test_points", "Erase test points", class =
-                       "btn-block"),
-        
+        actionButton("demo_remove_test_points", "Erase test points", class = "btn-block")
       ),
       sidebarPanel(
         width = 3,
@@ -74,7 +69,7 @@ ui <- fluidPage(
         textOutput("game_over"),
         textOutput("game_info"),
         plotOutput("game_plot", click  = "game_plot_click", dblclick = "game_plot_dblclick"),
-        textOutput("game_points_info"),
+        textOutput("game_points_info")
       ),
       sidebarPanel(
         width = 3,

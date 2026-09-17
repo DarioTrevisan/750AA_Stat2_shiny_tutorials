@@ -8,7 +8,6 @@
 #
 
 library(shiny)
-library(shiny)
 
 ui <- fluidPage(
   sliderInput("x", "If x is", min = 1, max = 50, value = 30),
@@ -20,22 +19,19 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   product <- reactive({
-    as.numeric(input$x)*as.numeric(input$y)
+    as.numeric(input$x) * as.numeric(input$y)
   })
-  
- 
-  
-  output$product <- renderText({ 
+
+  output$product <- renderText({
     product()
   })
-  output$product_plus5 <- renderText({ 
+  output$product_plus5 <- renderText({
     product() + 5
   })
-  output$product_plus10 <- renderText({ 
+  output$product_plus10 <- renderText({
     product() + 10
   })
 }
 
-
-# Run the application 
+# Run the application
 shinyApp(ui = ui, server = server)

@@ -28,12 +28,11 @@ Welcome to the Empirical Risk Minimization (ERM) challenge! This interactive gam
 
 # define huber loss function
 
-hub <- function(x, delta=1){
-  if (abs(x)<delta){
-    x^2/2
-  }
-  else{
-    delta*(abs(x) -delta/2)
+hub <- function(x, delta = 1) {
+  if (abs(x) < delta) {
+    x^2 / 2
+  } else {
+    delta * (abs(x) - delta / 2)
   }
 }
 
@@ -42,53 +41,40 @@ huber <- Vectorize(hub, vectorize.args = c("x"))
 
 # define loss function
 
-
-loss <- function(value, points, choice){
-  res = points - value
-  eps=0.001
-  if (choice == "OLS"){
-    mean((res)^2)
-  }
-  else if (choice == "ABS"){
-    mean(abs(res))+ eps*value
-  }
-  else if (choice == "HUB"){
-    mean(huber(res))+eps*value
-  }
-  else if (choice == "1QUART"){
-    mean(  3*pmax(0, -res) ) + mean( pmax(0, res) )+eps*value 
-  }
-  else if (choice == "10PERC"){
-    mean(  9*pmax(0, -res) + pmax(0, res) )+eps*value 
-  }
-  else if (choice == "EXP"){
-    mean( exp(abs(res)))
-  }
-  else {
+loss <- function(value, points, choice) {
+  res <- points - value
+  eps <- 0.001
+  if (choice == "OLS") {
+    mean(res^2)
+  } else if (choice == "ABS") {
+    mean(abs(res)) + eps * value
+  } else if (choice == "HUB") {
+    mean(huber(res)) + eps * value
+  } else if (choice == "1QUART") {
+    mean(3 * pmax(0, -res)) + mean(pmax(0, res)) + eps * value
+  } else if (choice == "10PERC") {
+    mean(9 * pmax(0, -res) + pmax(0, res)) + eps * value
+  } else if (choice == "EXP") {
+    mean(exp(abs(res)))
+  } else {
     0
   }
 }
 
 # Function that outputs the formula for the loss
 
-
-loss_formula <- function(choice){
+loss_formula <- function(choice) {
   if (choice == "OLS") {
     "z^2."
-  }
-  else if (choice == "ABS") {
+  } else if (choice == "ABS") {
     "|z|."
-  }
-  else if (choice == "HUB"){
+  } else if (choice == "HUB") {
     "z^2/2 if |z|<1, otherwise (|z|-1/2)"
-  }
-  else if (choice == "1QUART") {
+  } else if (choice == "1QUART") {
     "3 z^- + z^+"
-  }
-  else if (choice == "10PERC") {
+  } else if (choice == "10PERC") {
     "9 z^- + z^+"
-  }
-  else if (choice == "EXP") {
+  } else if (choice == "EXP") {
     "exp(|z|)"
   }
 }

@@ -17,13 +17,14 @@ game_player_point <- reactiveVal()
 game_plot_reactive <- reactiveVal()
 
 
-# game status
+# game status: 0 = start a new level, 1 = waiting for a selection,
+# 2 = selection confirmed, showing the answer
 game_status <- reactiveVal(0)
 
 # game level
 game_level <- reactiveVal(0)
 
-# game aestetics
+# game aesthetics
 game_num_points <- reactiveVal()
 game_color_fill <- reactiveVal()
 game_color_edge <- reactiveVal()
@@ -34,37 +35,90 @@ game_guess_correct <- reactiveVal(0)
 game_guess_wrong <- reactiveVal(0)
 
 
-# observe events for the game
+# helper: randomly sample the number of points for the current level
 
-# randomly sample number of points
-
-game_num_points_reactive <- reactive({
+sample_game_num_points <- function() {
   min_points <- as.integer(game_level() / 2) + 3
   n <- sample(min_points:(game_level() + 3), size = 1)
   game_num_points(n)
-})
+}
+
+# helper: move on from the "showing the answer" state to a new round -
+# remove the identified medoid, reset the player's selection (it is no
+# longer valid once a point is removed) and get ready for the next pick
+game_advance_round <- function() {
+  game_status(1)
+  game$sample_points <- game$sample_points[-game_medoid_point(), ]
+  game_player_point(NULL)
+  output$game_info <- renderText("Click to select a point. Double click (or hit button) to confirm.")
+  game_plot_reactive(game_draw_points_reactive())
+}
+
+# helper: confirm the player's current choice (called from the confirm
+# button and from double-clicking the plot)
+game_confirm_choice <- function() {
+  if (is.null(game_player_point())) {
+    output$game_info <- renderText("Select a point first!")
+    return(invisible(NULL))
+  }
+
+  if (game_status() == 1) {
+    game_status(2)
+    plt <- game_draw_points_reactive() +
+      geom_point(
+        aes(x = x, y = y),
+        data = game$sample_points[game_player_point(), ],
+        colour = "black",
+        size = 7,
+        shape = 21,
+        fill = "white",
+        alpha = 0.8
+      ) +
+      geom_point(
+        aes(x = x, y = y),
+        data = game$sample_points[game_medoid_point(), ],
+        colour = "red",
+        size = 10,
+        shape = 10
+      )
+    game_plot_reactive(plt)
+
+    if (game_medoid_point() == game_player_point()) {
+      game_guess_correct(game_guess_correct() + 1)
+      output$game_info <- renderText("Your guess is right! click again (or hit button) to continue.")
+    } else {
+      game_guess_wrong(game_guess_wrong() + 1)
+      output$game_info <- renderText("Your guess is wrong! click again (or hit button) to continue.")
+    }
+  } else if (game_status() == 2) {
+    game_advance_round()
+  }
+}
 
 
+# observe events for the game
 
-# if game status is 0 sample points and draw plot and move to game status 1
-# also randomly sample color theme for blocks (just to make it nicer)
-
+# if game status is 0, sample points, draw the plot and move to game status 1
+# also randomly sample a color theme for the tiles (just to make it nicer)
 
 observe({
   if (game_status() == 0) {
-    output$game_info <- renderText(paste0("Click to select a point. Double click (or hit button) to confirm."))
+    output$game_info <- renderText("Click to select a point. Double click (or hit button) to confirm.")
     game_level(game_level() + 1)
-    game_num_points_reactive()
+    sample_game_num_points()
     game_color_fill(sample(1:30, 1))
     game_color_edge(sample(1:30, 1))
+    game_player_point(NULL)
+    game$sample_points <- data.frame(
+      x = runif(game_num_points()),
+      y = runif(game_num_points())
+    )
     game_status(1)
-    game$sample_points <- data.frame(x = runif(game_num_points()),
-                                     y = runif(game_num_points()))
     game_plot_reactive(game_draw_points_reactive())
   }
 })
 
-# if there are only two points left move to next level
+# if there are only two points left, move to the next level
 
 observe({
   if (nrow(game$sample_points) == 2) {
@@ -73,12 +127,11 @@ observe({
 })
 
 
-
-# at single click propose medoid
+# at single click: propose medoid (status 1) or advance the round (status 2)
 
 observeEvent(input$game_plot_click, {
   if (game_status() == 1) {
-    output$game_info <- renderText(paste0("Click to select a point. Double click (or hit button) to confirm."))
+    output$game_info <- renderText("Click to select a point. Double click (or hit button) to confirm.")
     game_player_point(closest_point(
       data.frame(
         x = input$game_plot_click$x,
@@ -97,71 +150,14 @@ observeEvent(input$game_plot_click, {
         alpha = 0.8
       )
     )
-  }
-  else  if (game_status() == 2) {
-    game_status(1)
-    game$sample_points <- game$sample_points[-game_medoid_point(), ]
-    output$game_info <- renderText(paste0("Click to select a point. Double click (or hit button) to confirm."))
-    game_plot_reactive(game_draw_points_reactive())
+  } else if (game_status() == 2) {
+    game_advance_round()
   }
 })
 
-
-
-
-
-
-observeEvent(input$game_confirm, game_confirm_choice() )
-
-
+observeEvent(input$game_confirm, game_confirm_choice())
 
 observeEvent(input$game_plot_dblclick, game_confirm_choice())
-
-game_confirm_choice <- reactive({
-  if( is.null(game_player_point()) ){
-    output$game_info <- renderText(paste0("Select a point first!"))
-  }
-  else{ 
-  if (game_status() == 1) {
-    game_status(2)
-    plt <- game_draw_points_reactive()
-    plt <- plt +
-      geom_point(
-        aes(x = x, y = y),
-        data = game$sample_points[game_player_point(), ],
-        colour = "black",
-        size = 7,
-        shape = 21,
-        fill = "white",
-        alpha = 0.8
-      ) +
-      geom_point(
-        aes(x = x, y = y),
-        data = game$sample_points[game_medoid_point(), ],
-        colour = "red",
-        size = 10,
-        shape = 10
-      )
-    game_plot_reactive(plt)
-    if (game_medoid_point() == game_player_point())
-    {
-      game_guess_correct(game_guess_correct() + 1)
-      output$game_info <- renderText(paste0("Your guess is right! click again (or hit button) to continue."))
-      #wins(wins()+1)
-      #values$data_points <- values$data_points[-medoid(), ]
-    }
-    else {
-      output$game_info <- renderText(paste0("Your guess is wrong! click again (or hit button) to continue."))
-      game_guess_wrong(game_guess_wrong() + 1)
-    }
-  } else if (game_status() == 2) {
-      game_status(1)
-      game$sample_points <- game$sample_points[-game_medoid_point(), ]
-      output$game_info <- renderText(paste0("Click to select a point. Double click (or hit button) to confirm."))
-      game_plot_reactive(game_draw_points_reactive())
-    }
-  }
-})
 
 
 # plot points reactive
@@ -179,29 +175,15 @@ game_draw_points_reactive <- reactive({
 })
 
 
-#game_plot_reactive(game_draw_points_reactive())
-
-# general observers
-
-
-observe(game_medoid_point())
-
-
 # outputs
 output$game_plot <- renderPlot(game_plot_reactive())
 output$level_info <- renderText(paste0("Level ", game_level()))
-output$game_stats <- renderText(
+output$game_stats <- renderText({
+  total_guesses <- game_guess_correct() + game_guess_wrong()
+  success_rate <- if (total_guesses == 0) 0 else round(game_guess_correct() / total_guesses, 2) * 100
   paste0(
-    "Right: ",
-    game_guess_correct(),
-    " times / Wrong: ",
-    game_guess_wrong(),
-    " times.
-                                        Success rate: ",
-    round(
-      game_guess_correct() / (game_guess_correct() + game_guess_wrong()),
-      2
-    ) * 100,
-    "%."
+    "Right: ", game_guess_correct(),
+    " times / Wrong: ", game_guess_wrong(),
+    " times. Success rate: ", success_rate, "%."
   )
-)
+})

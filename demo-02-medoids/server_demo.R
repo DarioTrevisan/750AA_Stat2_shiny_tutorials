@@ -17,56 +17,66 @@ demo_player_point <- reactiveVal()
 demo_plot_reactive <- reactiveVal()
 
 
-
 # observe events for the demo
 
 # at single click propose medoid or draw points
 
-observeEvent(input$demo_plot_click, 
-             {if(input$demo_radio == "demo_select"){
-  demo_player_point(closest_point(
-    data.frame(
-      x = input$demo_plot_click$x,
-      y = input$demo_plot_click$y
-    ),
-    demo$sample_points
-  ))
-  demo_plot_reactive(
-    demo_draw_points_reactive() + geom_point(
-      aes(x = x, y = y),
-      data = demo$sample_points[demo_player_point(), ],
-      colour = "black",
-      size = 7,
-      shape = 21,
-      fill = "white",
-      alpha = 0.8
+observeEvent(input$demo_plot_click, {
+  if (input$demo_radio == "demo_select") {
+    demo_player_point(closest_point(
+      data.frame(
+        x = input$demo_plot_click$x,
+        y = input$demo_plot_click$y
+      ),
+      demo$sample_points
+    ))
+    demo_plot_reactive(
+      demo_draw_points_reactive() + geom_point(
+        aes(x = x, y = y),
+        data = demo$sample_points[demo_player_point(), ],
+        colour = "black",
+        size = 7,
+        shape = 21,
+        fill = "white",
+        alpha = 0.8
+      )
     )
-  )}
-               else{
-                 add_row <- data.frame(x = input$demo_plot_click$x,
-                                       y = input$demo_plot_click$y)
-                 # add row to the sample points
-                 demo$sample_points <- rbind(demo$sample_points, add_row)
-                 demo_plot_reactive(demo_draw_points_reactive())
-               }
+  } else {
+    add_row <- data.frame(x = input$demo_plot_click$x, y = input$demo_plot_click$y)
+    # add row to the sample points
+    demo$sample_points <- rbind(demo$sample_points, add_row)
+    demo_plot_reactive(demo_draw_points_reactive())
+  }
 })
 
 
 # button actions
 
 observeEvent(input$demo_remove_medoid, {
+  req(nrow(demo$sample_points) > 0)
   demo$sample_points <- demo$sample_points[-demo_medoid_point(), ]
+  # the previously selected point index is no longer valid once a row is removed
+  demo_player_point(NULL)
   demo_plot_reactive(demo_draw_points_reactive())
 })
 
 observeEvent(input$demo_erase_plot, {
   demo$sample_points <- data.frame(x = numeric(), y = numeric())
+  demo_player_point(NULL)
   demo_plot_reactive(demo_draw_points_reactive())
 })
 
 observeEvent(input$demo_show_medoid, {
-  plt <- demo_draw_points_reactive()
-  plt <- plt +
+  if (nrow(demo$sample_points) == 0) {
+    output$demo_info <- renderText("Draw some points first!")
+    return(invisible(NULL))
+  }
+  if (is.null(demo_player_point())) {
+    output$demo_info <- renderText("Select a point first!")
+    return(invisible(NULL))
+  }
+
+  plt <- demo_draw_points_reactive() +
     geom_point(
       aes(x = x, y = y),
       data = demo$sample_points[demo_player_point(), ],
@@ -84,12 +94,11 @@ observeEvent(input$demo_show_medoid, {
       shape = 10
     )
   demo_plot_reactive(plt)
-  if (demo_medoid_point() == demo_player_point())
-  {
-    output$demo_info <- renderText(paste0("Your guess is right!"))
-  }
-  else {
-    output$demo_info <- renderText(paste0("Your guess is wrong!"))
+
+  if (demo_medoid_point() == demo_player_point()) {
+    output$demo_info <- renderText("Your guess is right!")
+  } else {
+    output$demo_info <- renderText("Your guess is wrong!")
   }
 })
 
@@ -109,14 +118,5 @@ demo_draw_points_reactive <- reactive({
 })
 
 
-
-# general observers
-
-observe(demo_medoid_point())
-
-
 # outputs
 output$demo_plot <- renderPlot(demo_plot_reactive())
-
-
-

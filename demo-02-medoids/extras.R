@@ -58,8 +58,12 @@ Join us in this fun and educational journey as we explore the world of Medoids!"
 # define a function to find the closest point from a data frame
 
 closest_point <- function(value, points) {
+  # guard against an empty data frame (nothing to compare against yet)
+  if (nrow(points) == 0) {
+    return(NA_integer_)
+  }
   # compute the distances from the value point to all the other points
-  distances = (value$x - points$x) ** 2 + (value$y - points$y) ** 2
+  distances <- (value$x - points$x) ** 2 + (value$y - points$y) ** 2
   # find the minimum distance index
   which.min(distances)
 }
@@ -67,12 +71,17 @@ closest_point <- function(value, points) {
 
 
 compute_medoid <- function(points) {
+  # guard against an empty data frame: 1:nrow(points) would wrongly become
+  # 1:0 (i.e. c(1, 0)) and iterate over invalid indices
+  if (nrow(points) == 0) {
+    return(NA_integer_)
+  }
   # for each point in points compute the distance to all the other points
-  distances = NULL
-  for (i in 1:nrow(points)) {
-    distances <- c(distances, sum(sqrt(
+  distances <- numeric(nrow(points))
+  for (i in seq_len(nrow(points))) {
+    distances[i] <- sum(sqrt(
       (points$x[i] - points$x) ** 2 + (points$y[i] - points$y) ** 2
-    )))
+    ))
   }
   which.min(distances)
 }

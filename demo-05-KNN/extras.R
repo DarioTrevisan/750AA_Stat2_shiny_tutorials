@@ -24,22 +24,20 @@ Put your skills to the test and navigate the complexities of data classification
 
 # Function to sample a random dataset and get its description
 sample_dataset <- function() {
-  dataset_names <- ls("package:MedDataSets")  # Get all dataset names in the 'datasets' package
-  valid_dataset <- NULL  # Initialize variable to store the valid dataset
-  
+  dataset_names <- ls("package:MedDataSets")  # all dataset names in the 'MedDataSets' package
+  valid_dataset <- NULL  # initialize variable to store the valid dataset
+
   while (is.null(valid_dataset)) {
-    # Sample a random dataset name
+    # sample a random dataset name
     random_name <- sample(dataset_names, 1)
-    
-    # Try to get the dataset and check for errors
+
+    # try to get the dataset and check for errors
     tryCatch({
-      valid_dataset <- get(random_name)  # Attempt to retrieve the dataset
-      #message(paste("Successfully sampled dataset:", random_name))
-      # Return both the dataset and its name
+      valid_dataset <- get(random_name)  # attempt to retrieve the dataset
+      # return both the dataset and its name
       return(list("data" = valid_dataset, "name" = random_name))
     }, error = function(e) {
-      #message(paste("Error with dataset:", random_name, "->", e$message))
-      valid_dataset <<- NULL  # Ensure valid_dataset remains NULL to continue the loop
+      valid_dataset <<- NULL  # ensure valid_dataset remains NULL to continue the loop
     })
   }
 }
@@ -47,18 +45,16 @@ sample_dataset <- function() {
 # sample a dataset with at least two numeric columns and one factor (for classification)
 
 sample_data_frame_numeric_class <- function() {
-  #   all <-  ls("package:datasets")
-  m = TRUE
+  m <- TRUE
   while (m) {
-    n = TRUE
+    n <- TRUE
     while (n) {
       ## sample until we find a dataset with at least two numeric columns and one factor
       data <- sample_dataset()
-      dataset <- na.omit(data$data)
       n <- !(sum(sapply(data$data, is.numeric)) > 1 &&
                sum(sapply(data$data, is.factor)) > 0)
     }
-    #remove NA and select only one factor and two numeric columns
+    # remove NA and select only one factor and two numeric columns
     dataset_tidy <- na.omit(cbind(data$data[sapply(data$data, is.numeric)], data$data[sapply(data$data, is.factor)]))
     dataset_numeric <- dataset_tidy[sapply(dataset_tidy, is.numeric)]
     dataset_numeric <- dataset_numeric[, sample(ncol(dataset_numeric), 2)]
@@ -75,6 +71,3 @@ sample_data_frame_numeric_class <- function() {
   ## return a list with data points (numeric), classes (factor, one sampled at random) and original name
   list("data" = dataset, "name" = data$name)
 }
-
-
-# example
