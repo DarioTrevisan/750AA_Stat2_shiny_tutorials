@@ -270,6 +270,7 @@ server <- function(input, output) {
     includeHTML(tmp)
   })
 
-  # bind the indicator/plot outputs to a blank initial state
-  reset_cluster_outputs()
+  # bind the indicator/plot outputs to a blank initial state; isolate()
+  # because this runs at session start, outside any reactive consumer
+  isolate(reset_cluster_outputs())
 }
